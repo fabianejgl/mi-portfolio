@@ -1,4 +1,4 @@
-# algo2-2022c1-grupal
+# Proyecto grupal Algoritmos 2, Simcity
 
 Esqueleto del repositorio para entregas grupales de Algoritmos y Estructuras de Datos 2, 1er cuatrimestre de 2022 UBA COmputer Science, trabajo grupal.
 
