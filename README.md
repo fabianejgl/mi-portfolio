@@ -1,3 +1,4 @@
 # Proyectos UBA Computer Science
 
-Este es mi portafolio hecho en HTML y CSS
+En este directorio se encuentran mis pryectos hechos para lA Licenciatura en Cs. de la Computación en la UBA.
+Cabe destacar que todos ellos se realizaron de forma grupal (2 a 4 integrantes).
