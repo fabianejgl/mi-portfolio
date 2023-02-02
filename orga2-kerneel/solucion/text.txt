@@ -1,0 +1,30 @@
+1)
+    a)
+    .offset_31_16 : bits más altos del offset
+    .offset_15_0 : bits más bajos del offset
+    .segsel : selector de segmento
+    .type : tipo de entrada (0D110), donde D indica si es una compuerta de 16 0 32
+        si D = 0 : es de 16
+        si D = 1 : es de 32
+    .dpl : nivel de privilegio
+    .present : si esta presente
+
+    offset: es la dirección de memoria donde comienza la dirección de memoria de la interrupción, done _isr##numero toma la interrupción número "numero" y &_isr##numero toma su dirección
+
+    b)
+    segmento de código de nivel 0: GDT_CODE_0_SEL
+    01110
+
+    c y d) Código
+
+2) KERNEL!!!
+
+3, 4 y 5) code
+
+6) pushad y popad. iret marca una vuelta de interrupción, porque iret popea de la pila, el registro de eflags, el registro cs, el eip y excepciones de error que fueron popeados al realizarse la interrupción
+
+7) code
+
+
+
+////

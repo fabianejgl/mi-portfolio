@@ -1,0 +1,80 @@
+1-  Tenemos que armar un scheduler
+    Luego para c/tarea se debe hacer un page directory, sus page tables correspondientes que al
+    iniciar la tarea son dos:
+        -uno con el kernel mapeado.
+        -el otro con, como mínimo, una página de código, una de stack y una de datos.
+    Luego hay que cambiar los registros:
+        -cr3
+        -tr
+        -eip
+        -esp
+        -ebp
+        -los reg de uso general
+        -Descriptor de segmento
+        -eflags
+    
+    Hay que definir la respectiva TSS para cada tarea, y la entrada de éstas en la GDT.
+
+    -El formato de entrada en la GDT es TSS Descriptor.
+        TYPE: 10B1          ;B=busy
+    Dónde almacenadas?
+        Los reg de cada tarea están en el TSS, incluido el CR3
+        Entrada gdt en la gdt
+        tss en memoria, lugar arbitrario, igual que las páginas
+
+
+
+
+2-  -Se lo llama al almacenamiento de los registros actuales, inclusive registros como CR3, EIP, ESP, EFLAGS,
+    para poner los de otra tarea.
+    -Se produce cuando cambiamos de tarea. Cambia los registro del procesador (antes los guarda, como parte del contexto previo al cambio de tareas).
+    -El TR indica la tarea actual apuntando a su TSS; cuando se cambia de contexto se actualiza a la nueva
+    entrada tras que se actualice la TSS previa.
+
+    (manual, dos carrillas que explican esto)
+
+3-  //-Entendemos primer cambio de contexto como pasar de la tarea inicial a la IDLE o algún otra. 
+    //    Primero que todo tenemos que sacar la tarea inicial del scheduler pa no volver a ella....
+    
+    -Debemos asegurarnos que el TR no sea el null Descriptor. Antes de hacer
+    el primer jmp far debe cargar la tr con un selector de tarea válido.
+    -Si no quedan tareas, tengo que poner en el TR la tarea IDLE para que pueda cambiar de tarea.
+
+4-  -Es el que dictamina cuál es la tarea a realizarse. Con que debe tener una forma de decidir dentro de las
+    tareas que tiene, cuál es la siguiente.
+
+5-  El scheduler le asigna a cada tarea un tiempo a cada uno para que parezca que se hacen en simultáneo
+
+
+/Si queres que scheduler soporte prioridades, lista de tareas, con cantiad de tics de tarea
+
+11)
+a)
+1- pushea los registros
+2- avisa al pic que la interrupción fue atendida
+3- ax = índice de la siguiente interrupción
+4- obtiene el índice de la tarea actual
+5- compara si la tarea actual con la que indica el scheduler 
+6- salta a .fin si son iguales
+7- mueve ax a lo apuntado por el selector de task del scheduler
+8- salta a la task nueva
+    Si salta, sale de la interrupción
+9- pop de los registros
+10- termina interrupción
+
+b)
+16 y 32
+selector:indice de la tarea en la gdt con su ti=0 y dpl
+NO, DA IGUAL EL OFFSET
+
+c) Regresa a la proxima instruccion despues del jmp far.
+
+12)
+a) recorre todas las tareas y devuelve la que tenga .state = 1, si no hay ninguna devuelvo GDT_IDX_TASK_IDLE << 3
+
+14)
+a) crea una entrada de la gdt apartir de un puntero a la tss 
+b) por que cada TR tiene 2 bits de DPL y 1 de TI
+
+16)
+a) por que no tenemos implementado que pasa cuando termina una tarea, deberiamos imprementar una syscall

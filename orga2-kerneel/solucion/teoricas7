@@ -1,0 +1,83 @@
+
+a-Dos niveles de privilegio, kernel y usuario
+
+b-
+La lógica da el Selector de segmento para obtener del GDT el Descriptor de Segmento
+para luego sumarle a su Segment BASE ADRESS el OFFSET que está en el lógico
+y así se obtiene la dirección virtual/lineal.
+
+-El index es de 12 y y ek offset de 32 te indica donde esta la direc lineal
+
+-Dividimos la direc VIRTUAL/LINEAL en 3 partes
+los 10 bits + significativos
+	que indicarán en qué entrada del directorio de páginas vamos a buscar la ubicación
+	de la tabla de páginas necesaria	(pd_index)
+
+los 10 bits siguientes
+	que indicarán en qué entrada de la tabla de páginas vamos a buscar la ubicación 
+	de la dirección base de la página necesaria (pt_index)
+los 12 bits más bajos
+	que indicarán el desplazamiento desde la base de la pagina donde se encuentra
+	el dato esperado (page_offset)
+	
+Cómo funcionan?	
+	Del CR3 los 20 bits más altos son los que contienen la dirección BASE de la página donde se encuentra el Directorio para TRADUCIR las Direcciones Virtuales
+	(-el cr3 es direc física- pero no es estática porque varía por la task de kernel/scheduler. SOLO se modifica cuando se cambia de task o se inicializa)
+
+	-Directorio y tabla de pags de 1024 entradas, los 20 bits + signific de una entrada del 	directorio 
+	corresponden a la dirección de la i-ésima Tabla de Páginas
+	-De la tabla los 20 bits más altos corresponde ala direc de la I-ésima página.
+
+
+
+	
+C-
+	-D(dirty) es seteado por unidad de memoria del procesador cuando se escribe en la página,
+	se limpia por soft.
+	-A(accessed) es seteado por unidad de memoria del procesador cuando se escribe o lee en 
+	la página, se limpia por soft.
+	
+	-PCD (cache disabled) hace que la página no se almacene en memoria rápida.
+	-PWT (write through) hace que al escribir la escritura se refleje en cache y memoria a la 
+	vez, sino sólo se actualiza la memoria cuando se desaloja la línea de caché.
+	
+	-U/S indica si la página puede ser accedida por el espacio de usuarix (bit en 1) o sólo
+	supervisor/kernel (bit en 0).
+	-R/W indica si la páina puede leerse y escribirse (bit en 1) o solo leerse (bit en 0).
+	-P indica si la p ́agina se encuentra cargada en memoria o no. 
+	
+d-
+	Cuando el u/s difiere se queda con el de mayor privilegio (menor numéricamente)
+	Cuando el r/w difiere y ambos coinciden en usuario. Se queda en el read-only
+	CUando el privilegio termina siendo de supervisor, si CR0	SI CR0.WP = 1, el tipo de acceso es determinado por las flag-R-W del directorio de páginas
+	y tabla de páginas. Si CR0.WP = 0, el privilegio de supervisor, puede leer y escrbir.
+
+	Una para el direct d epags, de ahi 2 , una par el kernel y otra para la tarea,
+	la tarea tiene 2 de codigo, 1 para la pila, otra para la data.
+
+E- 	3: si solamente vamos a leer codigo, un directorio y dos tablas de pagina, una para kernel y otra para tareas. ASUMO que el codigo está escrito en memoria
+	7: si o si necesitamos una pagina para el directorio, luego, dos tablas de pagina, una de kernel y una para tarea,
+	despues el codigo que asumimos que tenemos que cargar nos ocupa dos paginas por lo que dice le enunciad. Por último, la página
+	para la pila/stack y otra para la pila del kernel, ya que debe tener su propia pila. (Pueden ser 8 si la task requiere utilizar una página de data)
+
+F- 	TLB actúa como una caché, almacenando los pares de valores indicados, para las últimas traducciones, 
+	y que una vez traducida la dirección de una página, si ésta contiene código el procesador seguirá ejecutando
+dentro de esa página de modo que recurrirá asiduamente a esa entrada del TLB-.
+	-Es necesario purgarlo cuando cambias de tarea, ya que cambia el CR3 y por ende el PD tonces una virt puede estar mapeada a otra física distinta a la de la tarea anterior
+	-Sus atributos son, el Directorio, tabla y dirección física base, así la proxima agarra la direc lineal y directamente va hacia la dirección física.
+	-Depende, si está dirty, es decir 
+
+Por cada Page Directory tenemos 1024 Page tables
+	Porcada page table tenemos 1024 paginas
+		Cada pagina es de 4K
+		
+CHECK3
+B. 
+-Es necesario mapear y desmapear las pags porque al estar activada la paginación, las 
+direcciones físicas las tomaría como una virtual y terminaría accediendo a cualquier lado,
+por ende hay que mapearlas, hacer lo que pide la función y luego desmapearlas, ya que esas
+direcciones solo me importan durante esa función, luego quedan inutilizadas (por eso el desmapeo).
+-Hacen de memoria virtual para las direcciones físicas que tenemos como src y dst.
+-No viene como parámetro y llamamos a un código de assembler
+
+
