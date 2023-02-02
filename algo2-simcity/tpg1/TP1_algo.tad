@@ -1,0 +1,1045 @@
+//decision: y cuando hay dos casas nos quedamos con la de mayor nivel(Axiomatizar)
+//decision: cuando hay solapamiento nos quedamos con las casas (Axiomatizar en agregarCasa, agregarComercio(servidor))
+
+importante:-----------------------------
+//falta axiomatizar casas(unir) comercios(unir) 
+
+//fijarse Aliasing de todo (nos olvidamos)
+---------------------------------------
+
+//funcionesauxiliares del servidor (agregar las auxiliares a otras op)//lau
+//fijarse que en el rep de simcity no haya ciclos //lau
+//fijarse mas restricciones para los Rep 
+
+
+TAD posicion es TUPLA (Nat x Nat)
+TAD construccion es string //podemos un ENUM{"casa", "comercio"}
+TAD nombre es string 
+
+TAD SIMCITY
+	Igualdad Observacional:(∀ s,s': simcity) (s =obs s' ⇐⇒
+		(mapa(s) =obs mapa(s') ∧
+         casas(s) =obs casas(s') ∧
+         comercios(s) =obs comercios(s') ∧
+         popularidad(s) =obs popularidad(s')))
+
+	Géneros: simcity
+	Exporta: nombreTad, observadores, generadores, 
+	Usa: Bool, Nat
+	
+	Observadores Básicos:
+		mapa        : simcity -> m
+		casas       : simcity -> dicc(pos, nivel)
+		comercios   : simcity -> dicc(pos, nivel)
+		popularidad : simcity -> Nat
+	Generadores:
+		iniciar      : mapa                                   -> simcity 
+		avanzarTurno : simcity s x dicc(pos, construccion) cs -> simcity
+						{restriccionesAvanzarTurno(s, cs)}
+		unir         : simcity a x simcity b                  -> simcity
+						{restriccionesUnir(a, b)}
+	Otras Operaciones:
+		turnos : simcity  -> nat 
+		restriccionesAvanzarTurno: simcity s x dicc(pos, construccion) cs -> bool
+		restriccionesUnir: simcity x simcity -> bool
+		noSuperponenRios: simcity x simcity -> bool //los rios de a no se superponen con las construcciones de b
+		nuevasNoSuperponenRios:  simcity x conj(pos) -> bool //los rios no se superponen con las construcciones
+		noSuperponenConstMax:  simcity x simcity -> bool //las construcciones de a no se superponen con la maxima const de b
+		construcciones:  simcity -> dicc(pos, nivel) 
+		
+	Axiomas:
+		mapa(iniciar(m)) ≡ m
+		mapa(avanzarTurno(s, dc)) ≡ mapa(s)
+		mapa(unir(a, b)) ≡ crear(horizontales(a) ∪ horizontales(b), verticales(a) ∪ verticales(b))
+		//hacer funcion para unir rios de mapas->>>>> crear(horizontales(a)Uhorizontales(b), verticales(a)U verticales(b))
+		
+		casas(iniciar(m)) ≡ vacio
+		
+		------------------------------------------------------------------------------------
+		//una opcion de casas(avanzarTurno(s, dc))--------------------
+		casas(avanzarTurno(s, dc)) ≡  darCasas(s, claves(dc), dc)
+		
+		darCasas(s, cd, dc) ≡ 
+			if vacía?(cd) then
+				aumentarTurnoAConstr(casas(s), claves(casas(s))) //falta aunmentar turno a todas las casas
+			else
+				if esCasa?(dameConstruccion(dameUno(cd), dc)) then
+						definir(dameUno(cd), 1, darCasas(s, sinUno(cd), dc)) // estoy agregando casas nuevas
+				else
+					darCasas(s, sinUno(cd), dc) 
+				fi
+			fi
+			
+		dameConstruccion(construc, dc) ≡ obtener(construc, dc)
+		
+		aumentarTurnoAConstr(dc, cc) ≡
+			if vacía?(cc) then
+				vacio
+			else 
+				definir(dameUno(cc), dameConstruccion(dameUno(cc),dc) + 1, aumentarTurnoAConstr(dc, sinUno(cc)))
+			fi
+
+		--------------------
+		casas(unir(sa, sb)) ≡ darUnionCasas(sa, sb, casas(sa), casas(sb), claves(casas(sb))) // areglar: que pasa si las posiciones se pisan? ( me quedo con el mayor nivel)
+		
+		darUnionCasas(sa, da, db, cb) ≡ //todas las que voy agregando son casas 
+		if vacía?(cd) then
+			casas(a) //no hay que aunmentar turno a las casas
+		else
+			definir(dameUno(cb), obtener(dameUno(cb), db), darUnionCasas(a, da, db, sinUno(cb)))
+		fi
+		
+		------------------------------------------------------------------------------------
+		//----------------otra opcion de casas(avanzarTurno)
+		casas(avanzarTurno(s, cs)) ≡ unirDiccionarios(sumarUnNivel(casas(s)),obtenerCasas(cs))
+
+		sumarUnNivel(dic) ≡
+			if vacío?(dic) then 
+				vacío
+			else
+				definir ( dameUno(claves(dic)) , obtener(dameUno(claves(dic)),dic) + 1, sumarUnNivel(borrar(dameUno((claves(dic))),dic)) )
+			fi
+		
+		obtenerCasas(cs) ≡
+			if vacío?(cs) then
+				vacío 
+			else
+				if esCasa?(obtener(dameUno(claves(cs)),cs)) then
+					definir( dameUno(claves(cs) , 1 , obtenerCasas(borrar(dameUno((claves(cs))))) ))
+				else
+					obtenerCasas(borrar(dameUno((claves(cs)))))
+				fi 
+			fi
+
+// HACER UN UNIRDICCIONARIOSCASAS QUE ANTES DE DEFINIR, HAGA UN "IF YA ESTA DEFINIDO, ME QUEDO CON EL DE MAYOR NIVEL"
+// HACER UN UNIRDICCIONARIOSCOMERCIOS QUE ANTES DE DEFINIR, PREGUNTE SI YA HAY UNA CASA EN ESE LUGAR, SI LA HAY NO LA SOBREESCRIBE 
+// 
+		unirDiccionarios(dic1, dic2) ≡
+			if vacío?(dic2) then 
+				dic1
+			else 
+				definir( dameUno(claves(dic2)) , obtener(dameUno(claves(dic2)),dic2) , unirDiccionarios(dic1,borrar(dameUno(claves(dic2)),dic2) )
+			fi	
+				// agarro un elemento de dic2 y lo defino con su clave en dic1, lo borro de dic2 y llamo a la funcion con estos nuevos diccionarios
+
+		casas(unir(sa, sb)) ≡ // UNA ESPECIE DE UNIR DICCIONARIOS PERO SI ENCUENTRA QUE YA HAY DEFINIDO ALGO EN ESE LUGAR LO CAMBIA POR EL DE MAYOR NIVEL 
+		
+		------------------------------------------------------------------------------------
+		comercios(iniciar(m)) ≡ vacio
+		
+		//------------------una opcionde comercios 
+		comercios(avanzarTurno(s, dc)) ≡ actuConDistManhattan(casas(s)), claves(dc), darComercios(s,cd,dc))
+		
+		darComercios(s, cd, dc) ≡ //todos los comercios ya agregados
+			if vacía?(cd) then
+				aumentarTurnoAConstr(casas(s), claves(casas(s))) //falta aunmentar turno a todas las casas
+			else
+				if esComercio?(dameConstruccion(dameUno(cd), dc)) then
+						definir(dameUno(cd), 1, darComercios(s, sinUno(cd), dc))
+				else
+					darComercios(s, sinUno(cd), dc) 
+				fi
+			fi	
+		actuConDistManhattan(ccs, cpos, dcA) ≡ 
+			if vacía?(cpos) then
+				vacio
+			else
+				if haycasaAdistManhattan?(cs, dameUno(cpos)) then
+					if nivel(posCasaManhattan(cs, dameUno(cpos)),dcA) > nivel(dameUno(pos), dcA) then
+						definir(dameUno(cpos), nivel(posCasaManhattan(cs, dameUno(cpos)),cs), actuConDistManhattan(cs, cpos, borrar(dameUno(cpos), dcA)) 
+					else 
+						actuConDistManhattan(cs, sinUno(cpos), dcA)
+					fi	
+				else
+					actuConDistManhattan(cs, sinUno(cpos), dcA)
+				fi
+			fi
+			
+		nivel(pos, dc) ≡ obtener(pos, dc) 
+		
+		haycasaAdistManhattan?(ccs, pos) ≡ 
+			if vacía?(cs) then 
+				false
+			else
+				if ((π1(dameUno(ccs))- π1(pos)) + (π2(dameUno(ccs))- π2(pos))) >= 3 then
+					true 
+				else
+					haycasaAdistManhattan(sinUno(ccs), pos)
+				fi
+			fi
+		
+		posCasaManhattan(ccs, pos) ≡ 
+			if ((π1(dameUno(ccs))- π1(pos)) + (π2(dameUno(ccs))- π2(pos))) >= 3 then
+				dameUno(ccs)
+			else
+				posCasaManhattan(sinUno(ccs), pos)
+			fi
+		
+		------------------------------------------------------------------------------------
+		//otraOpcion comercios()
+		comercios(avanzarTurno(s, cs)) ≡ unirDiccionarios(sumarUnNivel(comercios(s)), modificarXCercania(casas(s),obtenerComercios(cs)))
+		
+		obtenerComercios(cs) ≡
+			if vacío?(cs) then
+				vacío 
+			else
+				if esComercio?(obtener(dameUno(claves(cs)),cs)) then
+					definir( dameUno(claves(cs) , 1 , obtenerComercios(borrar(dameUno((claves(cs))))) ))
+				else
+					obtenerComercios(borrar(dameUno((claves(cs)))))
+				fi 
+			fi
+		
+		modificarXCercania(casas,comercios) ≡
+			if vacía?(comercios) then
+				vacío
+			else 
+				if haycasaAdistManhattan?(casas,dameUno(claves(comercios))) then
+					definir(dameUno(claves(comercios)), nivCasaManhattan(casas, dameUno(claves(comercios)) , 0) , modificarXCercania(casas,borrar(dameUno(claves(comercios)),comercios)))
+				else 
+					definir(dameUno(claves(comercios)), 1 , modificarXCercania(casas,borrar(dameUno(claves(comercios)),comercios)))			// hace redundante la definicion de obtenerComercios pero bueno
+				fi
+			fi
+	
+		haycasaAdistManhattan?(casas,comercio) ≡
+			if vacía?(casas) then 
+				false
+			else
+				if ( (π1(dameUno(claves(casas))) - π1(comercio)) + (π2(dameUno(claves(casas)) - π2(comercio))) ) <= 3 then
+					true 
+				else
+					haycasaAdistManhattan(borrar(dameUno(claves(casas)),casas) , comercio)
+				fi
+			fi
+		
+		nivCasaManhattan(casas,comercio,nivel) ≡
+			if vacío?(casas) then
+				nivel 
+			else 
+				if ( (π1(dameUno(claves(casas))) - π1(comercio)) + (π2(dameUno(claves(casas)) - π2(comercio))) ) <= 3 then
+					if obtener(dameUno(claves(casas)), casas) > nivel then
+						nivCasaManhattan(borrar(dameUno(claves(casas)), comercio , obtener(dameUno(claves(casas)), casas) ))    // si el nivel encontrado es mayor al que teniamos, lo pasamos por parametro para guardarlo
+					else 
+						nivCasaManhattan(borrar(dameUno(claves(casas)), comercio , nivel ))
+					fi
+				fi 
+			fi 
+				
+
+		------------------------------------------------------------------------------------
+		//fijarse si se sobreponen una casa y un comercio con cual me quedo?
+		comercios(unir(a, b)) ≡ // si saco una casa no me importa si hay algun comercio que ya no esta a dist manhattan
+			if haySolapamiento?()
+		
+		popularidad(iniciar(m)) ≡ 0
+		popularidad(avanzarTurno(s, dc)) ≡ popularidad(s)
+		popularidad(unir(a, b)) ≡ popularidad(a) + popularidad(b) + 1
+		
+		turnos(iniciar(m)) ≡ 0
+		turnos(avanzarTurno(s, dc)) ≡ turnos(s) +1
+		turnos(unir(a, b)) ≡ maximo(turnos(a), turnos(b))
+		
+		
+			
+		construcciones(s) ≡ auxUnirDiccionarios(casas(s), comercios(s))
+		auxUnirDiccionarios(da, db) ≡ 
+			if vacio?(claves(db)) then
+				da 
+			else 
+				if def?(dameUno(claves(db)), da) then
+					auxUnirDiccionarios(da, borrar(dameUno(claves(db)), db))
+				else
+					definir(dameUno(claves(db)), obtener(dameUno(claves(db))), auxUnirDiccionarios(da, borrar(dameUno(claves(db)), db)))
+				fi
+			fi
+		
+		restriccionesAvanzarTurno(s, cs) ≡ nuevasNoSuperponenRios(s, claves(cs)) ∧L vacio?(claves(construcciones(s)) ∩ claves(cs))
+		restriccionesUnir(a, b) ≡ noSuperponenRios(a, b) ∧L noSuperponenRios(b, a) ∧L noSuperponenConstMax(a, b) ∧L noSuperponenConstMax(b, a)
+		
+		noSuperponenRios(a, b) ≡ ¬auxSuperponenRios(mapa(a), claves(construcciones(b)))
+		nuevasNoSuperponenRios(s, c) ≡ ¬auxSuperponenRios(mapa(s), c)
+		auxSuperponenRios(m, c) ≡ ¬vacio?(c) ∧L (seSuperpone(m, dameUno(c)) ∨ auxSuperponenRios(m, sinUno(c)))//c es conj(Pos)
+		seSuperpone(m, p) ≡ p1 ∈ horizontales(m) ∨ p2 ∈ verticales(m)
+		
+		noSuperponenConstMax(a, b) ≡ auxnoSuperponenPos(claves(construcciones(a)), auxMaxConst(claves(construcciones(b)), construcciones(b)))
+		auxMaxConst(c, dc) ≡ 
+			if vacio?(c) then
+				/vacio 
+			else 
+				if obtener(dameUno(c), dc) = auxMaxNivel(claves(dc), dc) then
+					Ag(dameUno(c), auxMaxConst(sinUno(c), dc)) 
+				else 
+					auxMaxConst(sinUno(c), dc) 
+				fi
+			fi
+		auxMaxNivel(c, dc) ≡ 
+			if vacio?(c) then
+				0 
+			else 
+				maximo(obtener(dameUno(c), dc), auxMaxNivel(sinUno(c), dc)) 
+			fi
+		auxnoSuperponenPos(ca, cb) ≡ vacio?(ca \interseccion cb)
+		
+Fin TAD
+
+TAD SERVIDOR
+Igualdad Observacional:	(∀s,s': servidor) (s =obs s' ⇐⇒
+((∀n: nombre) (haySimcity?(s,n) =obs haySimcity(s',n) ∧L haySimcity?(s,n) ⇒L
+(darSimcity(s,n) =obs darSimcity(s',n) ∧
+esUnible(s,n) =obs esUnible(s',n) ∧
+darConstrucciones(s,n) =obs darConstrucciones(s',n)))));
+
+	Géneros: nombreTad
+	Exporta: nombreTad, observadores, generadores, 
+	Usa: Bool, Nat
+	
+	Observadores Básicos:
+		haySimcity? :	servidor × nombre	  -> bool 	 
+		darSimcity  : servidor srv x nombre n -> simcity {haySimcity?(srv, n)}
+		esUnible?   : servidor srv x nombre n -> bool {haySimcity?(srv, n)}
+		//opcion par aguardar en una cajita 
+		darConstrucciones  : servidor srv x nombre n -> dicc(pos x construccion) cs {haySimcity?(srv, n)}
+		
+	Generadores:
+		levantarServidor        :                                                       -> servidor
+		fundarSimcity           : servidor srv x nombre n x mapa                        -> servidor 
+								  {¬haySimcity?(srv, n)}
+		avanzarTurnoPorServidor : servidor srv x nombre n x dicc(pos x construccion) cs -> servidor
+			{haySimcity?(srv, n) ∧L esUnible?(srv,n) ∧L restriccionesAvanzarTurno(darSimcity(srv, n), cs)}
+		
+		unirPorServidor         : servidor srv x nombre n x nombre m                    -> servidor
+			{¬(n = m) ∧ (haySimcity?(srv, n) ∧ haySimcity?(srv, m)) ∧L (esUnible?(srv, n) ∧ 
+			esUnible?(srv, m)) ∧L restriccionesUnir(darSimcity(srv, n), darSimcity(srv, m)) y cajita vacia}
+			
+		//
+		
+		agregarCasa             : servidor srv x nombre n x pos p -> servidor			 
+	 		{haySimcity?(srv, n) ∧L esUnible?(srv, n) ∧ nuevasNoSuperponenRios(darSimcity(srv,n), Ag(p, vacío()))) ∧
+			 ¬(p ∈ claves(construcciones(darSimcity(srv,n)))) ∧ ¬(p ∈ claves(darConstrucciones(srv,n))) }
+			 
+		agregarComercio         : servidor srv x nombre n x pos p -> servidor
+			{haySimcity?(srv, n) ∧L esUnible?(srv, n) ∧ nuevasNoSuperponenRios(darSimcity(srv,n), Ag(p, vacío()))) ∧
+			 ¬(p ∈ claves(construcciones(darSimcity(srv,n)))) ∧ ¬(p ∈ claves(darConstrucciones(srv,n))) }
+
+	
+
+	Otras Operaciones:
+		turnosPorServidor : servidor srv x nombre n -> nat 
+			 {haySimcity?(srv, n)}
+		
+		//completar
+	Axiomas:
+	 
+	haySimcity?(levantarServidor(), n) ≡ false
+  	haySimcity?(fundarSimcity(srv, n), m) ≡ (n = m) ∨ haySimcity?(srv, m) 
+	haySimcity?(avanzarTurnoPorServidor(srv,n,cs), m) ≡ haySimcity?(srv, m)
+	haySimcity?(unirPorServidor(srv,n,m), n') ≡ haySimcity?(srv,n')
+	haySimcity(agregarCasa(srv,n,p), m) ≡ haySimcity?(srv, m)
+	haySimcity(agregarComercio(srv,n,p), m) ≡ haySimcity?(srv, m)
+
+	darSimcity(fundarSimcity(srv, n, map), m) ≡
+ 	if n = m then
+			iniciar(map)
+		else
+			darSimcity(srv, m)
+		fi
+
+  	darSimcity(avanzarTurnoPorServidor(srv, n, cs), m) ≡ 
+		if n = m then 
+			avanzarTurno(darSimcity(srv, n), cs) 
+		else 
+			darSimcity(srv, m) 
+		fi
+  	darSimcity(unirPorServidor(srv, n, m), l) ≡ 
+		if n = l then 
+			unir(darSimcity(srv, n), darSimcity(srv, m)) 
+		else
+		 	darSimcity(srv, l) 
+		fi  
+	
+	darSimcity(agregarCasa(srv,n,p),m) ≡ darSimcity(srv,m)
+	darSimcity(agregarComercio(srv,n,p),m) ≡ darSimcity(srv,m)
+
+  	esUnible?(fundarSimcity(srv, n, map), m) ≡ (n = m) ∨ esUnible?(srv, m)
+  	esUnible?(avanzarTurnoPorServidor(srv, n, cs), m) ≡ esUnible?(srv, m)
+  	esUnible?(unirPorServidor(srv, n, m), l) ≡ ¬(m = l) ∧L esUnible?(srv, l)
+	esUnible?(agregarCasa(srv,n,p),m) ≡ esUnible?(srv, m)
+	esUnible?(agregarComercio(srv,n,p),m) ≡ esUnible?(srv, m)
+
+	darConstrucciones(fundarSimcity(srv,n,m),l) ≡
+		if n = l then
+			vacío
+		else
+			darConstrucciones(srv,l)
+		fi
+
+	darConstrucciones(avanzarTurnoPorServidor(srv,n,cs),m) ≡
+		if n = m then
+			vacío
+		else
+			darConstrucciones(srv,m)
+		fi
+
+	darConstrucciones(unirPorServidor(srv,n,m),l) ≡ darConstrucciones(srv,l)
+
+	darConstrucciones(agregarCasa(srv,n,p),m) ≡
+		if n = m then
+			definir(p,casa,darConstrucciones(srv,m))
+		else
+			darConstrucciones(srv,m)
+		fi
+
+	darConstrucciones(agregarComercio(srv,n,p),m) ≡
+		if n = m then
+			definir(p,comercio,darConstrucciones(srv,m))
+		else
+			darConstrucciones(srv,m)
+		fi
+
+	turnosPorServidor(srv,n) ≡ turnos(darSimcity(srv,n))
+
+Fin TAD
+
+
+
+-------------------------------------------------------------------------------
+trie con clave nombre y significado simcity
+agregar casa y comercios los guardamos en una "caja" en servidor
+tenemos que modificar los niveles de un simcity que ya unimos //NO
+hacer que el conjunto de rios sea una union de "conjuntos enlazados" para poder tener complejidad O(1)
+
+
+
+Modulos de referencia:
+
+Modulo Mapa:
+
+Interfaz:
+	se explica con: Mapa
+	generos: mapa
+
+Operaciones basicas de mapa: 
+
+	CREAR(in hs: conj(Nat), in vs: conj(Nat))-> res:mapa 
+	Pre ≡ {true}
+	Post ≡ {res =obs mapa(hs, vs)}
+	Complejidad: O(copy(hs), copy(vs))
+	Descripcion: crea un mapa 
+	
+	UNIR(in m1:mapa, in m2:mapa)-> res:mapa 
+	Pre ≡ {true}
+	Post ≡ {res =obs mapa(horizontales(m1) U horizontales(m2), verticales(m1) U verticales(m2))}
+	Complejidad: O())
+	Descripcion: crea un mapa 
+	
+	/completar 
+	
+Representacion:
+
+Representacion de mapa 
+
+mapa se representa con estr 
+donde estr es tupla(horizontales: conj(Nat), verticales: conj(Nat))
+
+Rep: estr -> bool 
+Rep(c) ≡ true ⇐⇒ true 
+
+Abs: estr m -> mapa 
+Abs(m) ≡horizontales(m) = estr.horizontales ∧ estr.horizontales ∧ verticales(m) = estr.verticales
+
+Algoritmos:
+----------------------------------------------------------
+icrear(in hs:conj(Nat), in vs:conj(Nat)) -> res:estr 
+1: estr.horizontales <- hs
+2: estr.verticales <- vs return estr 
+
+Complejidad: O(copy(hs) + copy(vs))
+----------------------------------------------------------
+iUnir(in m1:mapa, in m2:mapa) -> res:mapa
+1:	res <- m1
+2: agregarAmapa(m1, m2)
+3: res <- icrear(m1.horizontales, m1.verticales)
+
+Complejidad: O(#(m1.horizontales) + #(m2.verticales)+ copy(hs) + copy(vs))
+Aliasing: no hay Aliasing por que cada mapa se usa para un solo simcity 
+
+agregarAmapa(m1, m2){
+	it = creariT(m2.horizontales)
+	it2 = creariT(m2.verticales)
+	
+	while(siguiente(it) != NULL ){ //supongo que el ultimo elem del it apunta a NULL
+		avanzar(it)
+		agregarRapido(m1.horizontales, *it)
+	}
+	
+	while(siguiente(it) != NULL ){ 
+		avanzar(it)
+		agregarRapido(m1.horizontales, *it) //O(1)
+	}
+	
+}	
+complejidad: O(#(m1.horizontales) + #(m2.verticales))
+---------------------------------------------------------
+
+Modulo Servidor:
+
+Interfaz:
+	se explica con: Servidor
+	generos: servidor
+
+Operaciones basicas de servidor: 
+
+LEVANTAR()-> res:servidor 
+Pre ≡ {true}
+Post ≡ {res =obs levantarServidor()}
+Complejidad: O(1)//??
+Descripcion: crea un servidor 
+Aliasing: no hay Aliasing
+
+FUNDAR(in/out srv:servidor, in n:string, in m:mapa)
+Pre ≡ {srv =obs srv₀ ∧ \not haySimcity(srv₀, n)}
+Post ≡ {srv =obs fundarSimcity(srv₀, n, m)}
+Complejidad: O(|n|)
+Descripcion: crea una nueva simcity
+Aliasing: no hay Aliasing
+
+
+AGCASAxSERVIDOR(in/out srv:servidor, in n:string, p:posicion)
+Pre ≡ {srv =obs srv₀ ∧L haySimcity?(srv₀, n) ∧L esUnible?(srv₀, n) ∧L
+	 	restriccionesAvanzarTurno(darSimcity(srv₀, n), cs)}//creo que anda, cambiar restricciones
+Post ≡ {srv =obs guardoCasaEnCajita(srv₀, n, s)} //cambiar
+Complejidad: O(|n|)
+Descripcion: agrega una casa(la guarda hasta avanzar turno)
+Aliasing: no hay Aliasing
+
+AGCOMERCIOxSERVIDOR(in/out srv:servidor, in n:string, p:posicion)
+Pre ≡ {srv =obs srv₀ ∧L haySimcity?(srv₀, n) ∧L esUnible?(srv₀, n) ∧L
+	 	restriccionesAvanzarTurno(darSimcity(srv₀, n), cs)}//creo que anda, cambiar restricciones
+Post ≡ {srv =obs guardoComercioEnCajita(srv₀, n, s)}
+Complejidad: O(|n|)
+Descripcion: agrega un comercio(la guarda hasta avanzar turno)
+Aliasing: no hay Aliasing
+
+TURNOPORSERVIDOR(in/out srv:servidor, in n:string) 
+Pre ≡ {srv =obs srv₀ ∧L haySimcity?(srv₀, n) ∧L esUnible?(srv₀, n) ∧L
+	 restriccionesAvanzarTurno(darSimcity(srv₀, n), cs)}//agregar cajita a tad servidor
+Post ≡ {srv =obs AvanzarTurno(srv₀, n, cajita)}
+Complejidad: complejidad: O(cantcasasTotales + cant comerciosTolales long(icomercios(e)))
+Descripcion: avanza turno
+Aliasing: no hay Aliasing
+
+UNIR(in/out srv:servidor, in n:string, in m: string)
+Pre ≡ {srv =obs srv₀ ∧ ¬(n =obs m) ∧ (haySimcity?(srv, n) ∧ haySimcity?(srv, m)) ∧L (esUnible?(srv, n) ∧ 
+esUnible?(srv, m)) ∧L restriccionesUnir(darSimcity(srv, n), darSimcity(srv, m)) y cajita vacia}
+Post ≡ {srv =obs unirPorServidor(srv, n, m)}
+Complejidad: O(|n|+|m|)
+Descripcion: une dos simcities
+Aliasing: no hay alising 
+
+HAYSIMCITY?(in srv:servidor, in n:string)-> res:bool 
+Pre ≡ {true}
+Post ≡ {res =obs haySimcity?(srv, n)}
+Complejidad: O(|n|)
+Descripcion: responde si existe un simcity con ese nombre
+Aliasing: no hay alising 
+
+DARSIMCITY(in srv:servidor, in n:string)-> res: simcity 
+Pre ≡ {haySimcity?(srv, n)}
+Post ≡ {res =obs darSimcity(srv, n)}
+Complejidad: O(|n|)
+Descripcion: busca y devuelve el simcity por nombre
+Aliasing:
+
+ESUNIBLE?(in/out srv:servidor, in n:string)-> res:bool
+Pre ≡ {haySimcity?(srv, n)}
+Post ≡ {res =obs esUnible(srv, n)}
+Complejidad: O(|n|)
+Descripcion: responde si el simcity en cuestion se puede modificar
+Aliasing:
+Representacion:
+
+Representacion de servidor 
+
+servidor se representa con estr 
+donde estr es un diccTrie(nombre: string, tupla(s:simcity, modificable:bool, constr:dicc(pos, construccion)))
+//modificable: aun no lo uni y puedo unirlo 
+//no modificable: ya lo uni 
+
+Rep: estr -> bool 
+(∀ e: estr)
+Rep(e) ≡ (∀ n:nombre)(n ∈ claves(e) ⇒L ( ¬(obtener(n, e).modificable) ⇒ estaVacia?(obtener(n, e).constr))
+//el mapa es infinito y son nat 
+
+Abs: estr srv -> servidor                    {Rep(srv)}
+Abs(srv) ≡ s:servidor/ 
+(∀ n:nombre)((n ∈ claves(srv) ⇐⇒ haySimcity?(s, n) ) ∧L (haySimcity?(s, n) ⇒L ( (π1(obtener(n, srv)) =obs darSimcity(s, n)) ∧L
+ (π2(obtener(n, srv)) =obs esUnible?(s, n)) ∧L ((π3(obtener(n, srv)) =obs darConstrucciones(s, n)))) ))
+ 
+
+ Algoritmos: 
+ ----------------------------------------------------------
+ iLevantar() -> res:estr 
+ 1: estr <- vacio()
+ 
+ Complejidad: O(1)
+ ----------------------------------------------------------
+ iFundar(in/out srv:servidor, in n:string, in m:mapa)
+ 1: definir(n, tupla(iniciar(m), true, vacio()), srv)
+ 
+ Complejidad: O(|n| + 1) = O(|n|)
+ ----------------------------------------------------------
+ iAgCasaxServidor(in/out srv:servidor, in n:string, p:posicion)
+ 1: definir(p, "Casa", obtener(n, srv).constr)//guardamos en una cajita las construcciones
+ 
+ //obtener(n,srv) me una tupla ⟨simcity, un bool, constr⟩ donde constr es la "cajita"
+ Complejidad: O(|n| + 1) = O(|n|)
+ ----------------------------------------------------------
+ iAgComercioxServidor(in/out srv:servidor, in n:string, p:posicion)
+ 1:  definir(p, "Comercio", obtener(n, srv).constr)
+ 
+ Complejidad: O(|n| + 1) = O(|n|)
+ ----------------------------------------------------------
+ iTurnoPorServidor(in/out srv:servidor, in n:string)
+ 1:  iAvanzarTurno(iDarSimcity(srv, n), obtener(n, srv).constr)
+ //usa avanzarTurno del simcty y le paso un simcity y la "cajita" de construcciones 
+ 
+ Complejidad: O(|n| + complejidad(iAvanzarTurno))
+ ----------------------------------------------------------
+ iUnir(in/out srv:servidor, in n:string, in m: string) 
+ 1: iUnirSymcities(iDarSimcity(srv, n), iDarSimcity(srv, m))
+ 
+ Complejidad: O(|n| + |n|) = O(|Nombre|) donde Nombre es el nombre mas largo???
+ ----------------------------------------------------------
+ iHaySimcity(in srv:servidor, in n:string) -> res: bool
+ 1: res <- definido?(n, srv)
+  
+ Complejidad: O(|n|)
+ ----------------------------------------------------------
+ iDarSimcity(in srv:servidor, in n:string) -> res:simcity
+ 1: res <- significado(n, srv).simcity
+ 
+ Complejidad: O(|n| + copy(simcity))
+ ----------------------------------------------------------
+ iEsUnible(in/out srv:servidor, in n:string) -> res: bool 
+ 1: res <- significado(n, srv).modificable
+ 
+ Complejidad: O(|n|)
+ ----------------------------------------------------------
+ 
+ 
+ Modulo SimCity:
+ 
+ Interfaz:
+ 	se explica con: SimCity 
+ 	generos: simcity 
+ 
+ Operaciones basicas de servidor: 
+ 
+ INICIAR(in m: mapa) -> res: simcity
+ Pre ≡ {true}
+ Post ≡ {res =obs iniciar(m)}
+ Complejidad: O(1)
+ Descripcion: inicializo el SimCity
+ Aliasing: 
+ 
+ AVANZARTURNO(in/out s: simcity, cs: dicc(pos, construccion))
+ Pre ≡ {s=s₀ ∧ restriccionesAvanzarTurno(s, cs)}
+ Post ≡ {s =obs avanzarTurno(s,cs)}
+ Complejidad: //ya esta 
+ Descripcion: el SimCity avanza un turno 
+ Aliasing:
+ 		 
+ UNIR(in/out s1: simcity, in s2: SimCity) 
+ Pre ≡ {s1=s1₀ ∧ restriccionesUnir(s1, s2)}
+ Post ≡ {s1 =obs unir(s1,s2)}
+ Complejidad: O(1)
+ Descripcion: union de dos simcities				
+ Aliasing:
+ 				
+ MAPA(in s:simcity) -> res: mapa  
+ Pre ≡ {true}
+ Post ≡ {res =obs mapa(s)}
+ Complejidad: 
+ Descripcion: me da el mapa del simcity  
+ Aliasing:
+ 
+ CASAS(in s: simcity) -> res: dicc(pos, Nivel)
+ Pre ≡ {true}
+ Post ≡ {res =obs casas(s)}
+ Complejidad: 
+ Descripcion: devuelve todas las casas que hay en SimCity
+ Aliasing:
+ 
+ COMERCIOS(in s: simcity) -> res: dicc(pos, Nivel)
+ Pre ≡ {true}
+ Post ≡ {res =obs comercios(s)}
+ Complejidad: 
+ Descripcion:
+ Aliasing:
+ 
+ POPULARIDAD(in s: simcity) -> res: Nat
+ Pre ≡ {true}
+ Post ≡ {res =obs popularidad(s)}
+  
+
+ 
+ Representacion:
+ 
+ Representacion de simcity 
+ 
+ simcity se representa con estr 
+ donde estr es tupla<casas:arbolconst, comercios:arbolconst, mapa:arbolmapa, turnos:nat, popularidad:nat>
+ donde arbolconst es puntero(nodo)
+ donde arbolmapa es puntero(nodomapa)
+ 
+ donde nodo es tupla<dicc(Pos, nivel), lista(punteros(nodo))> //cambiar a dicc?
+ donde nodomapa es tupla<mapa, lista(punteros(nodomapa))>
+ //tupla de listas enlazadas? arbol de listas enlazadas, cada lista representa las casas propias de un simcity
+ // nodo  tupla<lista(casas), lista<punteros(nodo)>>
+ //s1 s2 s3 s2.unir(s3) <l2, l3> s1.unir(s2) <<l1>, <l2, l3>>
+ 
+ //tamano= cantidad de uniones +1
+ Rep: estr -> bool 
+ (∀ e: estr)
+ Rep(e) ≡ tamano(e.casas)=tamano(e.comercios)=tamano(mapa)=popularidad+1 ∧L no chocan rios y no chocan max const 
+ ∧L e.turnos = maximo(maxnivel(e.casas), maxnivel(e.comercios))
+ 
+ tamano: arbolconst -> nat // falta tamano para arbolmapa
+ tamano(arb) ≡ 
+ 	if arb = null then
+ 		0
+	else
+		1 + sumanodos(*arb2)
+	fi
+	
+	sumanodos: lista(punteros(nodo)) -> Nat
+	sumanodos(ls) ≡
+	if largo(ls) = 0 then
+		0
+	else
+		tamano(prim(ls)) + sumanodos(fin(ls))
+	fi
+	
+	maxnivel: arbolconst -> nat 
+  maxnivel(arb) ≡ 
+  	if arb = null then
+  		0
+ 	else
+ 		maximo(maxconst(*arb1), maxnodos(*arb2))
+ 	fi
+ 	
+ 	maxnodos: lista(punteros(nodo)) -> Nat
+ 	maxnodos(ls) ≡
+ 	if largo(ls) = 0 then
+ 		0
+ 	else
+ 		maximo(maxnivel(prim(ls)), maxnodos(fin(ls)))
+ 	fi
+	
+	maxconst: dicc(Pos, Nivel) -> Nat
+  maxconst(d) ≡
+  if vacio?(claves(d)) then
+ 	 0
+  else
+ 	 maximo(obtener(dameUno(claves(d))), maxconst(borrar(dameUno(claves(d)), d)))
+  fi
+ 	
+	armarmapa: arbolmapa -> mapa
+  armarmapa(arb) ≡ 
+  	if arb = null then
+  		0
+ 	else
+ 		1 + sumanodos(*arb2)
+ 	fi
+ 	
+ 	armarmapanodos: lista(punteros(nodomapa)) -> Nat
+ 	armarmapanodos(ls) ≡
+ 	if largo(ls) = 0 then
+ 		vacio()
+ 	else
+ 		unir(armarmapa(prim(ls)),  armarmapanodos(fin(ls)))
+ 	fi
+ 
+ 
+ 
+ Abs: estr e -> servidor                {Rep(e)}
+ Abs(e) ≡ s: simcity/ 
+ #(claves(π1(*(e.casas))) = #(claves(π1(*(e.casas))) ∧ sonIguales(π1(*(e.casas)), casas(s), 0, #(claves(π1(*(e.casas))))) ∧ 
+  sonIguales(π1(*(e.comercios), comercios(s), 0, #(claves(π1(*(e.comercios)))) ∧ 
+  e.popularidad = popularidad(s) ∧ π1(*e.mapa) = mapa(s) ∧ e.turnos = turnos(s)
+ 
+  //una opcion 
+  sonIguales(d, dcs) ≡
+  claves(dcs) = claves(d) ∧ (∀c:pos) (pos ∈ claves(dcs) ⇒L obtener(pos, dcs) = obtener(pos, d))
+  
+ //otra opcion
+ sonIguales(d, dcs, i, long) ≡
+ 	if i >= long then
+ 		true
+ 	else
+ 		if esAlgunoDelDicc(dameUno(claves(d)),obtener((dameUno(claves(d))), dcs) then
+ 			sonIguales(l, dcs, i++, long )
+ 		else
+ 			false
+ 		fi
+ 	fi			
+
+esAlgunoDelDicc(c, o, dcs) ≡
+	if vacía?(dcs) then
+		false
+	else
+		if (c = dameUno(claves(dcs))) ∧ o = obtener(dameUno(claves(dcs)),dcs)) then
+			true
+		else
+			esAlgunoDelDicc(t, borrar(dameUno(claves(dcs)), dcs))
+		fi
+	fi
+e.casas =obs casas(s)
+//-----------------
+
+
+Algoritmos: 
+----------------------------------------------------------
+iIniciar(in m: mapa) -> res:simcity 
+1: estr <- ⟨< vacia() x vacia() > x < vacia() x vacia() > x < m x vacia() > x 0 x 0 ⟩ 
+
+Complejidad: O(1)
+----------------------------------------------------------
+iAvanzarTurno(in/out e: estr, cs: dicc(pos, construccion))//sumar uno a todas(casas y comercios), agregar construcciones, para todo comercio chequear nivel
+1: e.turnos++
+2: e.casas 
+sumarUnNivelATodo(e.casas) //le paso el puntero al arbol de casas
+sumarUnNivelATodo(e.comercios)
+agregarConstruciones(e, cs)
+//iCasas me devuelve todas las casas, incluida las casas uniones 
+
+complejidad: O(cantcasasTotales + cant comerciosTolales long(icomercios(e)))
+
+sumarUnNivelATodo(c){
+	//π₁(*c) es el dicc de casas o comercios 
+	itdicc = creariT(π₁(*c))
+	//primero subo niveles a mi dicc principal 
+	subirUnNivelAlDicc(π₁(*c), itDicc)
+	 
+	if (¬vacía?(π₂(*e.casas))) { // si tengo uniones
+		//recorro la lista de punteros
+		for(int i= 0; i< long(π₂(*c)); i++){
+			itdicc = creariT(π₁(( π₂(*c))[i] )) //creo un it en el iesimo dicc de la lista
+			subirUnNivelAlDicc( π₁(( π₂(*c))[i] ), itDicc)
+		}
+	}
+} 
+subirUnNivelAlDicc(d, itDicc){
+	while(haySiguiente(itdicc)){ //el ultimo iterador apunta a null
+		//cuando el it comienza siguiente me da el primer elem del dicc 
+		definir(siguienteClave(itdicc), siguienteSignifica(itdicc)+1, d) //sobreescribe la clave que ya tengo
+		itdicc = siguiente(itdicc)
+	}
+}
+//agrego nuevas construciones
+agregarConstruciones(e, cs){
+	//agregar casas directamente 
+	itdicc = creariT(cs)
+	
+	while(haySiguiente(itdicc)){
+		if(siguienteSignificado(itdicc) = "casa"){
+			//uso π₁(*e.casas) por que lo puedo modificar
+			definir(siguienteClave(itdicc), 1, π₁(*e.casas))
+		}
+		else if(siguienteSignificado(itdicc) = "comercio"){
+			if(¬estaAdistManhatann(iCasas(e), siguienteClave(itdicc)){ //aca solo quiero ver las casas totales
+				definir(siguienteClave(itdicc), 1, π₁(*e.comercios))
+			}
+			else{ //hay alguna casa a dist de manhattan del comercio que estoy agregando
+				definir(siguienteClave(itdicc), NivCasaCercaxManhattan(iCasas(e), siguienteClave(itdicc)), π₁(*e.comercios))
+			}
+		}
+		itdicc = siguiente(itdicc)
+	}
+}
+estaAdistManhatan(cs, posComercio): res <- bool {
+	res <- false
+	itcs = creariT(cs)
+	while(haySiguiente(itcs)){
+		if(formulaManhantan(siguienteClave(itcs), posComercio){
+			//como agrego comercios nuevos, no me fijo el nivel mayor
+			res <- true
+		}
+		itcs = siguiente(itcs)
+	}
+}
+//decision: de todas las casas a dist de Manhatan tomamos la de mayor nivel
+NivCasaCercaxManhattan(cs, posComercio)<- res: nat {
+	itcs = creariT(cs)
+	nat maxNiv = 1
+	while(haySiguiente(itcs)){
+		if(formulaManhantan(siguienteClave(itcs), posComercio){
+			if( siguienteSignificado(itcs) > maxNiv){
+				maxNiv = siguienteSignificado(itcs)
+			}
+		}
+		itcs = siguiente(itcs)
+	}
+	res <-maxNiv
+}
+
+formulaManhantan(pos1, pos2)<- res:bool {
+	res <- false 
+	if ( ((π1(pos1)-π2(pos2)) + (π1(pos2)-π2(pos1))) <= 3 ){
+		res <- true
+	}
+}
+Complejidad: O(mucho)
+----------------------------------------------------------
+//no modifico los niveles de el simcity union por que tengo que poder seguir mostrando ese simcity sin ser modificado (modifico los niveles en icasas e icomercios)
+iUnirSymcities(in/out e1: estr, in e2: estr)
+1: agregarAtras(π2(e1.casas), &e2.casas)
+2: agregarAtras(π2(e1.comercios), &e2.comercios)
+3: agregarAtras(π2(e1.mapas), &e2.mapas)
+4: e1.popularidad++
+5: e1.turnos <- maximo(e1.turno, e2.turno)
+
+Complejidad: O(1 + 1 + 1 + 1 + 1) = O(1)
+----------------------------------------------------------
+iMapa(in e: estr)-> res:mapa 
+1: res <- mapaTotal(e.mapa)
+
+	mapaTotal(mp){
+		tmp <- π₁(*mp)
+			for(int i= 0; i< long((π₂(*mp))); i++){
+					tmp <- iUnir(res, mapaTotal(π2(*mp)[i]))
+			}
+		return tmp
+ 	}
+Complejidad: O(iunir*popularidad)
+----------------------------------------------------------
+//version nueva
+
+iCasas(in e: estr) -> res: dicc(pos, Nivel)
+1: res <- π₁(*e.casas)
+2: 
+if (¬vacía?(π₂(*e.casas))) { // si tengo uniones
+	//π₁((π₂(*e.casas))[i] es mi dicc iesimo
+	
+	dicc comercios = 
+
+	for(int i= 0; i< long((π₂(*e.casas))); i++){
+		itcasas = creariT(π₁((π₂(*e.casas))[i]))
+		itcomercios = crearIt(π₁((π₂(*e.casas))[i]) ) 
+
+		res = agregarCasasDeUnion(itcasas, itcomercios, res,  ) //it al comienzo el iesimo dicc
+		}
+	}
+
+	agregarCasasDeUnion(itcasas, itcomercios, res, e){
+	while(haySiguiente(itcasas)){
+		bool definido = false 
+		for(int i =0; i < long(π₂(e.comercios)) y not definido ; i++){ //recore la lista 
+		itComercios = creatIt(π₁((π₂(*e.comercios))[i]) )
+
+		if( definido?(siguienteClave(itcasas,res)) or definido?(siguienteClave(it, π₁((π₂(*e.comercios))[i]))   ){
+			definido = true 
+		
+		definir(siguienteClave(it), siguienteSignificado(it), res)
+		}
+
+		}
+		
+		it = siguiente(it)
+	}
+--------------------------------------------
+iCasas(in e: estr) -> res: dicc(pos, Nivel)
+1: res <- π₁(*e.casas)
+2: 		 
+3: if (¬vacía?(π₂(*e.casas))) { // si tengo uniones
+	//π₁((π₂(*e.casas))[i] es mi dicc iesimo
+	for(int i= 0; i< long((π₂(*e.casas))); i++){ //recorre uniones
+		itdicc = creariT(π₁((π₂(*e.casas))[i]))
+			
+		res = agregarCasasDeUnion(itdicc, res) //it al comienzo el iesimo dicc
+		}
+	}
+	
+
+	agregarCasasDeUnion(it, res){
+	while(haySiguiente(it)){
+		if(not definido?(siguienteClave(it,res))){
+			definir(siguienteClave(it), siguienteSignificado(it), res)
+			it = siguiente(it)
+		}else{
+			if(siguienteSignificado(it) > obtener(siguienteClave(it),π₂(*e.casas){
+				definir(siguienteClave(it), siguienteSignificado(it),res)
+	}
+	
+	
+//π₂(*e.casas) lista de uniones de casas 
+//π₁(*e.casas) el dicc de casas 
+//(π₂(*e.casas))[i] una tupla con ⟨dicc casas, lista de punteros⟩ 
+//las uniones anterios ya esta unidas , por lo cual me muestran sus respectivas casas
+
+//la idea es iterar el conj de claves de uno de los dicc de casas de la union y agregar
+
+
+Complejidad: O(popularidad * long(cada dicc de casas))
+----------------------------------------------------------
+//fijarse la dist de manhatan
+
+iComercios(in e: estr) 
+1: res <- π₁(*e.comercios)
+2: 	
+	if (¬vacía?(π₂(*e.comercios))) { 	
+		for(int i= 0; i< long((π₂(*e.comercios))); i++){
+			itdicc = creariT(π₁((π₂(*e.comercios))[i]))
+	
+			res = agregarComerciosDeUnion(itdicc, res)
+			res = quitarComerciosSolapadosConCAsas(itdicc, res)
+		}
+	}
+	
+	//subo nivel 
+	
+	itcomercios = crearIt(π₁(*e.comercios))
+	
+	while(haySiguiente?(itcomercios)){
+		if(estaAdistManhatann(e.casas(e), siguienteClave(itcasas)){ //aca solo quiero ver las casas totales
+			if(NivCasaCercaxManhattan(e.casas(e), siguienteClave(itdicc)) > siguienteSignificado(itcomercios) {
+				definir(siguienteClave(itdicc), NivCasaCercaxManhattan(iCasas(e), siguienteClave(itdicc)), π₁(*e.comercios))
+			}
+		}
+	itcomercios = siguiente(itcomercios)
+	}
+	
+	//elimino comercio si estoy uniendo un simcity y hay una casa en la misma posicion 
+	
+	quitarComerciosSolapadosConCAsas(itdicc, res){ //le paso el it de diccionarios
+		itCasa = crearIt(π₁(*e.casas))
+		while(HaySiguiente(it){ //hay un dicc union
+			if(definido?(siguienteClave(it), res)){ //res es el dicc de comercios
+				borrar(siguienteClave(it), res)
+			}
+		}
+	}
+	agregarComerciosDeUnion(it, res){
+	
+		while(haySiguiente(it)){
+			
+			if(definido?(siguienteClave(it), res) ){ //caso de solapamento de comercios
+				if(siguienteSignificado(it) > obtener(siguienteClave(it), res)) { 
+					definir(siguienteClave(it), siguienteSignificado(it), res)
+				}
+			} 
+			else if( not definido?(siguienteClave(it), π₁(*e.casas)) ){	
+				definir(siguienteClave(it), siguienteSignificado(it), res)
+			}
+			
+			it = siguiente(it)
+		} 
+	} 
+Complejidad: O(long(e.casas)*long(e.casas)*long(e.comercios))
+----------------------------------------------------------
+iPopularidad(in e: estr) -> res: Nat
+1: res <- e.popularidad
+
+ //cada vez que unimos aumentamos la popularidad
+Complejidad: O(1)
+----------------------------------------------------------

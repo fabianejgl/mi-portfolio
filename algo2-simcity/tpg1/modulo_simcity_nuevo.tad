@@ -1,0 +1,58 @@
+idea para la representacion de simcity:
+
+simcity se representa con estr 
+donde estr es tupla <casas:lista enlazada de dicc(Pos, nivel),
+                     comercios:lista enlazada de dicc(Pos, nivel),
+                     mapa:lista enlazada de mapas
+                     turnos:nat,
+                     popularidad:nat>
+
+de esta forma, podemos agregar al final de estas listas en O(1), cumpliendo la complejidad pedida para unir simcitys
+
+Rep: estr -> bool 
+(∀ e: estr)
+Rep(e) ≡ longitud(e.casas) = longitud(e.comercios) = longitud(mapa) = popularidad + 1 ∧L no chocan rios y no chocan max const 
+∧L (∃d: dicc)(está?(d,e.casas) ∨ está?(d,e.comercios) ∧ maxNivelDicc(d) = e.turnos ∧ (∀ d': dicc)(d' != d ⇒ maxNivelDicc(d') <= maxNivelDicc(d)))
+
+maxDicc: dic dicc(Pos, nivel) ->
+maxDicc ≡ maxDiccAux(dic, claves(dic))
+
+maxDiccAux: dic dicc(Pos, nivel) x claves ->
+maxDiccAux ≡
+  if vacío?(claves) then 
+    0
+  else 
+		max( obtener(dameUno(claves),dic) , maxDiccAux(dic,sinUno(claves)))
+	fi 
+
+// la funcion claves y el dameUno está bien usarlas así en el irep?
+
+Abs(e) ≡ s: simcity/ 
+	casas(s) = unirListaDicc(e.casas) ∧
+	comercios(s) = unirListaDicc(e.comercios) ∧
+	mapa(s) = unirListaMapas(e.mapa) ∧
+	popularidad(s) = e.popularidad ∧
+	turnos(s) = e.turnos
+	
+	unirListaDicc: listaDicc l -> Dicc 
+	unirListaDicc(l) ≡
+		if long(l) = 0 then 
+			vacío 
+		else 
+			unirDiccionarios(prim(l),unirListaDicc(fin(l)))
+		fi 
+		
+	unirListaMapas: listaMapas l -> Mapa 
+	unirListaMapas(l) ≡
+		if long(l) = 0 then
+		 	<∅,∅>
+		else
+		 	<π1(prim(l)) ∪ π1(unirListaMapas(fin(l)) , π2(prim(l)) ∪ π2(unirListaMapas(fin(l))>
+		fin
+				
+	unirDiccionarios(dic1, dic2) ≡
+		if vacío?(dic2) then 
+			dic1
+		else 
+			definir( dameUno(claves(dic2)) , obtener(dameUno(claves(dic2)),dic2) , unirDiccionarios(dic1,borrar(dameUno(claves(dic2)),dic2) )
+		fi

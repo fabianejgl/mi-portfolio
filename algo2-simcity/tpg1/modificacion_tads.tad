@@ -1,0 +1,119 @@
+TAD SIMCITY
+	Igualdad Observacional: (∀ s,s': simcity) (s =obs s' ⇐⇒
+																						(mapa(s) =obs mapa(s') ∧
+                                             casas(s) =obs casas(s') ∧
+                                             comercios(s) =obs comercios(s') ∧
+                                             popularidad(s) =obs popularidad(s')))
+
+
+TAD SERVIDOR
+	Igualdad Observacional:	(∀s,s': servidor) (s =obs s' ⇐⇒
+																						((∀n: nombre) haySimcity?(s,n) =obs haySimcity(s',n) ∧L
+																						darSimcity(s,n) =obs darSimcity(s',n) ∧
+																						esUnible(s,n) =obs esUnible(s',n) ∧
+																						darConstrucciones(s,n) =obs darConstrucciones(s',n)))
+								)
+							);
+	Géneros: nombreTad
+	Exporta: nombreTad, observadores, generadores,
+	Usa: Bool, Nat
+
+	Observadores Básicos:
+		haySimcity? :	servidor × nombre	  -> bool
+		darSimcity  : servidor srv x nombre n -> simcity {haySimcity?(srv, n)}
+		esUnible?   : servidor srv x nombre n -> bool {haySimcity?(srv, n)}
+		//opcion par aguardar en una cajita
+		darConstrucciones  : servidor srv x nombre n -> dicc(pos x construccion) cs {haySimcity?(srv, n)}
+
+	Generadores:
+		levantarServidor        :                                                       -> servidor
+		fundarSimcity           : servidor srv x nombre n x mapa                        -> servidor
+								  {¬haySimcity?(srv, n)}
+		avanzarTurnoPorServidor : servidor srv x nombre n x dicc(pos x construccion) cs -> servidor
+			{haySimcity?(srv, n) ∧L esUnible?(srv,n) ∧L restriccionesAvanzarTurno(darSimcity(srv, n), cs)}
+		unirPorServidor         : servidor srv x nombre n x nombre m                    -> servidor
+			{¬(n = m) ∧ (haySimcity?(srv, n) ∧ haySimcity?(srv, m)) ∧L (esUnible?(srv, n) ∧
+			esUnible?(srv, m)) ∧L restriccionesUnir(darSimcity(srv, n), darSimcity(srv, m)) ∧ vacío?(darConstrucciones(srv,n)) ∧ vacío?(darConstrucciones(srv,m))}
+		agregarCasa             : servidor srv x nombre n x pos p -> servidor
+			{haySimcity?(srv, n) ∧L esUnible?(srv, n) ∧ ¬(π1(p) ∈ horizontales(mapa(darSimcity(srv,n))) ∨ π2(p) ∈ verticales(mapa(darSimcity(srv,n)))) ∧ ¬(p ∈ claves(construcciones(darSimcity(srv,n)))) }
+		agregarComercio         : servidor srv x nombre n x pos p -> servidor
+			{haySimcity?(srv, n) ∧L esUnible?(srv, n) ∧ ¬(π1(p) ∈ horizontales(mapa(darSimcity(srv,n))) ∨ π2(p) ∈ verticales(mapa(darSimcity(srv,n)))) ∧ ¬(p ∈ claves(construcciones(darSimcity(srv,n)))) }
+
+	Otras Operaciones:
+		turnosPorServidor : servidor srv x nombre n -> nat
+			                                     {haySimcity?(srv, n)}
+
+		//completar
+	Axiomas:
+
+	haySimcity?(levantarServidor(), n) ≡ false
+ haySimcity?(fundarSimcity(srv, n), m) ≡ (n = m) ∨ haySimcity?(srv, m)
+ haySimcity?(avanzarTurnoPorServidor(srv,n,cs),m) ≡ haySimcity?(srv, m)
+	haySimcity?(unirPorServidor(srv,n,m),n') ≡ haySimcity?(srv,n')
+	haySimcity(agregarCasa(srv,n,p),m) ≡ haySimcity?(srv, m)
+	haySimcity(agregarComercio(srv,n,p),m) ≡ haySimcity?(srv, m)
+
+	darSimcity(fundarSimcity(srv, n, map), m) ≡
+ 	if n = m then
+			iniciar(map)
+		else
+			darSimcity(srv, m)
+		fi
+
+ darSimcity(avanzarTurnoPorServidor(srv, n, cs), m) ≡
+		if n = m then
+			avanzarTurno(darSimcity(srv, n), cs)
+		else
+			darSimcity(srv, m)
+		fi
+
+ darSimcity(unirPorServidor(srv, n, m), l) ≡
+		if n = l then
+			unir(darSimcity(srv, n), darSimcity(srv, m))
+		else
+		 	darSimcity(srv, l)
+		fi
+
+	darSimcity(agregarCasa(srv,n,p),m) ≡ darSimcity(srv,m)
+	darSimcity(agregarComercio(srv,n,p),m) ≡ darSimcity(srv,m)
+
+ esUnible?(fundarSimcity(srv, n, map), m) ≡ (n = m) ∨ esUnible?(srv, m)
+ esUnible?(avanzarTurnoPorServidor(srv, n, cs), m) ≡ esUnible?(srv, m)
+ esUnible?(unirPorServidor(srv, n, m), l) ≡ ¬(m = l) ∧L esUnible?(srv, l)
+
+	esUnible?(agregarCasa(srv,n,p),m) ≡ esUnible?(srv, m)
+	esUnible?(agregarComercio(srv,n,p),m) ≡ esUnible?(srv, m)
+
+	darConstrucciones(fundarSimcity(srv,n,m),l) ≡
+		if n = l then
+			vacío
+		else
+			darConstrucciones(srv,l)
+		fi
+
+	darConstrucciones(avanzarTurnoPorServidor(srv,n,cs),m) ≡
+		if n = m then
+			vacío
+		else
+			darConstrucciones(srv,m)
+		fi
+
+	darConstrucciones(unirPorServidor(srv,n,m),l) ≡ darConstrucciones(srv,l)
+
+	darConstrucciones(agregarCasa(srv,n,p),m) ≡
+		if n = m then
+			definir(p,casa,darConstrucciones(srv,m))
+		else
+			darConstrucciones(srv,m)
+		fi
+
+	darConstrucciones(agregarComercio(srv,n,p),m) ≡
+		if n = m then
+			definir(p,comercio,darConstrucciones(srv,m))
+		else
+			darConstrucciones(srv,m)
+		fi
+
+	turnosPorServidor(srv,n) ≡ turnos(darSimcity(srv,n))
+
+Fin TAD

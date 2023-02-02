@@ -1,0 +1,116 @@
+TAD posicion es TUPLA (Nat x Nat)
+
+TAD SIMCITY
+	Igualdad Observacional:();
+	Géneros: simcity
+	Exporta: nombreTad, observadores, generadores, 
+	Usa: Bool, Nat
+	
+	Observadores Básicos:
+		mapa        : simcity -> m
+		casas       : simcity -> dicc(pos, nivel)
+		comercios   : simcity -> dicc(pos, nivel)
+		popularidad : simcity -> Nat
+	Generadores:
+		iniciar      : mapa                                   -> simcity 
+		avanzarTurno : simcity s x dicc(pos, construccion) cs -> simcity
+						{restriccionesAvanzarTurno(s, cs)}
+		unir         : simcity a x simcity b                  -> simcity
+						{restriccionesUnir(a, b)}
+	Otras Operaciones:
+		turnos : simcity  -> nat 
+		restriccionesAvanzarTurno: simcity s x dicc(pos, construccion) cs -> bool
+		restriccionesUnir: simcity x simcity -> bool
+		noSuperponenRios: simcity x simcity -> bool //los rios de a no se superponen con las construcciones de b
+		nuevasNoSuperponenRios:  simcity s x dicc(pos, construccion) cs -> bool //los rios no se superponen con las construcciones
+		noSuperponenConstMax:  simcity x simcity -> bool //las construcciones de a no se superponen con la maxima const de b
+		construcciones:  simcity -> dicc(pos, nivel) 
+		
+	Axiomas:
+		mapa(iniciar(m)) ≡ m
+		mapa(avanzarTurno(s, cs)) ≡ mapa(s)
+		mapa(unir(a, b)) ≡ crear(horizontales(a) ∪ horizontales(b), verticales(a) ∪ verticales(b))
+		//hacer funcion para unir rios de mapas->>>>> crear(horizontales(a)Uhorizontales(b), verticales(a)U verticales(b))
+		
+		casas(iniciar(m)) ≡ vacio
+		casas(avanzarTurno(s, cs)) ≡ unirDiccionarios(sumarUnNivel(casas(s)),obtenerCasas(cs))
+
+		sumarUnNivel(dic) ≡
+			if vacío?(dic) then 
+				vacío
+			else
+				definir ( dameUno(claves(dic)) , obtener(dameUno(claves(dic)),dic) + 1, sumarUnNivel(borrar(dameUno((claves(dic))),dic)) )
+			fi
+		
+		obtenerCasas(cs) ≡
+			if vacío?(cs) then
+				vacío 
+			else
+				if esCasa?(obtener(dameUno(claves(cs)),cs)) then
+					definir( dameUno(claves(cs) , 1 , obtenerCasas(borrar(dameUno((claves(cs))))) ))
+				else
+					obtenerCasas(borrar(dameUno((claves(cs)))))
+				fi 
+			fi
+
+		unirDiccionarios(dic1, dic2) ≡
+			if vacío?(dic2) then 
+				dic1
+			else 
+				definir( dameUno(claves(dic2)) , obtener(dameUno(claves(dic2)),dic2) , unirDiccionarios(dic1,borrar(dameUno(claves(dic2)),dic2) )
+			fi	
+				// agarro un elemento de dic2 y lo defino con su clave en dic1, lo borro de dic2 y llamo a la funcion con estos nuevos diccionarios
+
+		casas(unir(sa, sb)) ≡ // UNA ESPECIE DE UNIR DICCIONARIOS PERO SI ENCUENTRA QUE YA HAY DEFINIDO ALGO EN ESE LUGAR LO CAMBIA POR EL DE MAYOR NIVEL 
+		
+		comercios(iniciar(m)) ≡ vacio
+		comercios(avanzarTurno(s, cs)) ≡ unirDiccionarios(sumarUnNivel(comercios(s)), modificarXCercania(casas(s),obtenerComercios(cs)))
+		
+		obtenerComercios(cs) ≡
+			if vacío?(cs) then
+				vacío 
+			else
+				if esComercio?(obtener(dameUno(claves(cs)),cs)) then
+					definir( dameUno(claves(cs) , 1 , obtenerComercios(borrar(dameUno((claves(cs))))) ))
+				else
+					obtenerComercios(borrar(dameUno((claves(cs)))))
+				fi 
+			fi
+		
+		modificarXCercania(casas,comercios) ≡
+			if vacía?(comercios) then
+				vacío
+			else 
+				if haycasaAdistManhattan?(casas,dameUno(claves(comercios))) then
+					definir(dameUno(claves(comercios)), nivCasaManhattan(casas, dameUno(claves(comercios)) , 0) , modificarXCercania(casas,borrar(dameUno(claves(comercios)),comercios)))
+				else 
+					definir(dameUno(claves(comercios)), 1 , modificarXCercania(casas,borrar(dameUno(claves(comercios)),comercios)))			// hace redundante la definicion de obtenerComercios pero bueno
+				fi
+			fi
+	
+		haycasaAdistManhattan?(casas,comercio) ≡
+			if vacía?(casas) then 
+				false
+			else
+				if ( (π1(dameUno(claves(casas))) - π1(comercio)) + (π2(dameUno(claves(casas)) - π2(comercio))) ) <= 3 then
+					true 
+				else
+					haycasaAdistManhattan(borrar(dameUno(claves(casas)),casas) , comercio)
+				fi
+			fi
+		
+		nivCasaManhattan(casas,comercio,nivel) ≡
+			if vacío?(casas) then
+				nivel 
+			else 
+				if ( (π1(dameUno(claves(casas))) - π1(comercio)) + (π2(dameUno(claves(casas)) - π2(comercio))) ) <= 3 then
+					if obtener(dameUno(claves(casas)), casas) > nivel then
+						nivCasaManhattan(borrar(dameUno(claves(casas)), comercio , obtener(dameUno(claves(casas)), casas) ))    // si el nivel encontrado es mayor al que teniamos, lo pasamos por parametro para guardarlo
+					else 
+						nivCasaManhattan(borrar(dameUno(claves(casas)), comercio , nivel ))
+					fi
+				fi 
+			fi 
+				
+		comercios(unir(a, b)) ≡ // si saco una casa no me importa si hay algun comercio que ya no esta a dist manhattan
+		//fijarse si se sobreponen una casa y un comercio con cual me quedo?

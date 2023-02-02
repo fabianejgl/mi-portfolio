@@ -1,0 +1,28 @@
+restriccionesUnir(a, b) ≡ noSuperponenRios(a, b) ∧L noSuperponenRios(b, a) ∧L noSuperponenConstMax(a, b)
+noSuperponenRios(a, b) ≡ ¬auxSuperponenRios(mapa(a), claves(construcciones(b)))
+auxSuperponenRios(m, c) ≡ ¬vacio?(c) ∧L (seSuperpone(m, dameUno(c)) ∨ auxSuperponenRios(m, sinUno(c)))//c es conj(Pos)
+seSuperpone(m, p) ≡ p1 ∈ horizontales(m) ∨ p2 ∈ verticales(m)
+
+noSuperponenConstMax(a,b) ≡ vacío?(maxConstrucciones(construcciones(a),maxNivel(construcciones(a))) ∩ maxConstrucciones(construcciones(b),maxNivel(construcciones(b))))
+maxConstrucciones(constr,max) ≡
+  if vacío?(constr) then
+    vacío
+  else
+    if obtener(dameUno(claves(constr)),constr) = max then
+      definir(dameUno(claves(constr)) , max , maxConstrucciones(borrar(dameUno(claves(constr)),constr)))
+    else
+      maxConstrucciones(borrar(dameUno(claves(constr)),constr))
+    fi
+  fi
+
+maxNivel(constr) ≡
+  if vacío?(constr) then
+    0
+  else
+    max(obtener(dameUno(claves(constr)) , constr), maxNivel(borrar(dameUno(claves(constr)),constr)))
+  fi
+
+
+casas(unir(a,b)) ≡ insertarMaximos(unionCasasAux(casasSinMaximos(a),casasSinMaximos(b)), maxCasas(a), maxCasas(b))
+
+comercios(unir(a,b)) ≡ borrarLosQueEstanEnCasas(insertarMaximos(unionComerciosAux(comerciosSinMaximos(a),comerciosSinMaximos(b)), maxComercios(a), maxComercios(b)))
